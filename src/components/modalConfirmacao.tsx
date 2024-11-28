@@ -14,6 +14,7 @@ interface ModalConfirmacaoProps {
   setItens: React.Dispatch<React.SetStateAction<any[]>>;
   incrementQuantity: (codprod: string) => void;
   decrementQuantity: (codprod: string) => void;
+  updateQuantity: (codprod: string, newQuantity: number) => void;
   // onConfirm: () => Promise<void>; // Função para enviar o pedido
 }
 
@@ -38,6 +39,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   setItens,
   incrementQuantity,
   decrementQuantity,
+  updateQuantity,
   // onConfirm,
 }) => {
 
@@ -72,6 +74,11 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
     try {
       if (!pedidoDeCupom && codtipVendaSelecionado === null) {
         setErrorMessage("Tipo de Negociação não pode ser nulo quando não for um pedido de cupom.");
+        return;
+      }
+
+      if(itens.length === 0){
+        setErrorMessage("Por favor, adicione itens ao pedido!")
         return;
       }
 
@@ -129,15 +136,12 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
 
   const handleSubmit = async () => {
     await sendOrder();
-  };
+  }; 
 
   const getTipoVenda = async () => {
     try {
       const result = await axiosInstance.get<{ Result: TipoNegociacao[] }>(
-        "/api/ClientsRetail/BuscaTipoNeg/9",
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+        "/api/ClientsRetail/BuscaTipoNeg/9"
       );
 
       const tipNeg = result?.data?.Result || [];
@@ -269,6 +273,8 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                               quantity={item.quantidade || 0}
                               incrementQuantity={incrementQuantity}
                               decrementQuantity={decrementQuantity}
+                              updateQuantity={updateQuantity} 
+
                             />
                           </td>
                           {/* <td className="px-6 py-4 text-center dark:text-gray-300">{item.quantidade}</td> */}

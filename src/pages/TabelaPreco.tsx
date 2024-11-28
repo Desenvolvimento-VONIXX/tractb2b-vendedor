@@ -95,6 +95,13 @@ function TabelaPreco() {
     }));
   };
 
+  const updateQuantity = (codprod: string, newQuantity: number) => {
+    setQuantities((prevQuantities) => ({
+      ...prevQuantities,
+      [codprod]: newQuantity,
+    }));
+  };
+
   const resetQuantities = () => {
     setQuantities({});
   };
@@ -366,6 +373,7 @@ function TabelaPreco() {
                           <QuantityInput
                             codprod={produto["Cód. produto"]}
                             quantity={quantities[produto["Cód. produto"]] || 0}
+                            updateQuantity={updateQuantity} 
                             incrementQuantity={incrementQuantity}
                             decrementQuantity={decrementQuantity}
                           />
@@ -445,6 +453,7 @@ function TabelaPreco() {
         setItens={setItens}
         incrementQuantity={incrementQuantity}
         decrementQuantity={decrementQuantity}
+        updateQuantity={updateQuantity} 
 
       />
 
