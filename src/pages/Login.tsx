@@ -64,37 +64,33 @@ function Login() {
  
   const onSubmit = async (data: LoginFormInputs) => {
     setLoading(true);
- 
+  
     try {
-      // Enviar usuário e senha para autenticação
       const authResponse = await axiosInstance.post(
         "/auth/loginVendedor",
         {
           login: data.usuario,
-          senha: data.senha,  // Enviar a senha aqui
+          senha: data.senha, 
         },
         {
           headers: {
             "Content-Type": "application/json",
-            // Removido "User-Agent" pois não pode ser configurado no navegador
           },
         }
       );
- 
+  
       if (!authResponse.data) {
         throw new Error("Sistema encontra-se fora do ar temporariamente.");
       }
- 
-      // Supondo que o backend retorne um cookie ou algo útil
+  
       const { cookie } = authResponse.data;
       const { codemp } = authResponse.data;
       const { codvend } = authResponse.data;
-
+  
       sessionStorage.setItem("authCookie", cookie);
       sessionStorage.setItem("codEmp", codemp);
       sessionStorage.setItem("codVend", codvend);
-
-      // A lógica de navegação e autenticação vai aqui
+  
       signIn();
       requirePasswordReset(false);
       navigate("/Tabela", {
@@ -105,23 +101,19 @@ function Login() {
         "Sistema encontra-se fora do ar temporariamente. ERR_43";
       if (error instanceof Error) {
         if ((error as any).response && (error as any).response.data) {
-          errorMessage =
-            (error as any).response.data.message ||
-            (error as any).response.data.Response ||
-            error.message;
+          errorMessage = (error as any).response.data.Mensagem_Error || error.message;
         } else {
           errorMessage = error.message;
         }
       }
-      addToast("danger", errorMessage);
+      addToast("danger", errorMessage); 
     } finally {
       setLoading(false);
     }
   };
+  
  
- 
- 
- 
+
   return (
     <DefaultLayout>
       <div className="fixed bottom-0 right-0 mb-2 mr-6">

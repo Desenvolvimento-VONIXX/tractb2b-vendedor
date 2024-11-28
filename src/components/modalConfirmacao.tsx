@@ -131,7 +131,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
     } finally {
       setLoading(false); 
     }
-  }
+  } 
 
 
   const handleSubmit = async () => {
