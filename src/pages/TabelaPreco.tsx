@@ -12,7 +12,7 @@ import QuantityInput from "../components/Quantidade";
 
 // Definindo a interface para os produtos
 interface Product {
-  "Cód. produto": string; 
+  "Cód. produto": string;
   "Vlr. unitário": number;
   "Marca": string;
   "Estoque": number;
@@ -50,6 +50,8 @@ function TabelaPreco() {
   const [totalPedido, setTotalPedido] = useState(0);
   const [modalFeedbackStatus, setModalFeedbackStatus] = useState(false);
   const [spinner, setSpinner] = useState(false);
+  const [isLoadingParc, setIsLoadingParc] = useState(false);
+  const [errorParc, setErrorParc] = useState("");
 
   const codEmp = sessionStorage.getItem("codEmp");
 
@@ -113,6 +115,7 @@ function TabelaPreco() {
   async function fetchProducts() {
     setErrorMessage(null);
     setSpinner(true);
+
     try {
       const response = await axiosInstance.get(
         `/prodsClient/genTabVarejo/${cpfCnpjSelecionado}/${codEmp}`
@@ -139,7 +142,10 @@ function TabelaPreco() {
     }
   }
 
+
   const getParceiros = async () => {
+    setIsLoadingParc(true);
+    setErrorParc("");
     try {
       const result = await axiosInstance.get<{ Clientes: Cliente[] }>(
         "/api/ClientsRetail/BuscaClientesVarejo"
@@ -156,13 +162,26 @@ function TabelaPreco() {
       setFilteredParceiros(parceirosFormatados);
     } catch (error) {
       console.error("Erro ao buscar parceiros:", error);
+      setErrorParc("Erro ao carregar parceiros. Tente novamente.");
+    } finally {
+      setIsLoadingParc(false); // Finaliza o carregamento
     }
   };
+
+
+
 
   useEffect(() => {
     getParceiros();
   }, []);
 
+  useEffect(() => {
+    if(parceiroSelecionado === 2715){
+      setCpfCnpjSelecionado("0");
+    }
+
+  }, [parceiroSelecionado])
+  
   useEffect(() => {
     if (cpfCnpjSelecionado) {
       fetchProducts();
@@ -245,7 +264,7 @@ function TabelaPreco() {
   }
 
 
-  
+
   return (
     <DefaultLayout>
       <section className="bg-gray-100 dark:bg-gray-900 min-h-screen pb-28">
@@ -273,24 +292,25 @@ function TabelaPreco() {
               </div>
             </div>
 
-            {showList && (
+         {showList && (
               <ul className="bg-white border border-gray-300 mt-2 rounded-lg overflow-y-auto dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 max-h-[30vh]">
-                {filteredParceiros.length > 0 ? (
+                {isLoadingParc ? (
+                  <li className="p-2 text-gray-500 dark:text-gray-300">Carregando...</li>
+                ) : errorParc ? (
+                  <li className="p-2 text-red-500 dark:text-red-300">{errorParc}</li>
+                ) : filteredParceiros.length > 0 ? (
                   filteredParceiros.map((parceiro) => (
                     <li
                       key={parceiro.codParc}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer uppercase"
-                      onClick={() => handleParceiroSelect(parceiro.nome, parceiro.codParc, parceiro.cpfcnpj)} // Passa o CNPJ aqui
+                      onClick={() => handleParceiroSelect(parceiro.nome, parceiro.codParc, parceiro.cpfcnpj)}
                     >
                       {parceiro.codParc} - {parceiro.nome}
                     </li>
                   ))
                 ) : (
-                  <li className="p-2 text-gray-500 dark:text-gray-300">
-                    Nenhum parceiro encontrado.
-                  </li>
+                  <li className="p-2 text-gray-500 dark:text-gray-300">Nenhum parceiro encontrado.</li>
                 )}
-
               </ul>
             )}
           </div>
@@ -338,6 +358,7 @@ function TabelaPreco() {
                     <th scope="col" className="px-4 py-3">Imagem</th>
                     <th scope="col" className="px-4 py-3">Cod.</th>
                     <th scope="col" className="px-4 py-3">Nome</th>
+                    <th scope="col" className="px-4 py-3">Marca</th>
                     <th scope="col" className="px-4 py-3">Quantidade desejada</th>
                     <th scope="col" className="px-4 py-3">Valor unitário</th>
                     <th scope="col" className="px-4 py-3">Estoque</th>
@@ -347,13 +368,13 @@ function TabelaPreco() {
                 <tbody>
                   {spinner ? (
                     <tr>
-                      <td colSpan={7} className="text-center p-4">
+                      <td colSpan={8} className="text-center p-4">
                         <Spinner />
                       </td>
                     </tr>
                   ) : errorMessage ? (
                     <tr>
-                      <td colSpan={7} className="text-red-400 text-center p-4">
+                      <td colSpan={8} className="text-red-400 text-center p-4">
                         <p>{errorMessage}</p>
                       </td>
                     </tr>
@@ -369,11 +390,13 @@ function TabelaPreco() {
                         </th>
                         <td className="px-4 py-3">{produto["Cód. produto"]}</td>
                         <td className="px-4 py-3">{produto["Produto"]}</td>
+                        <td className="px-4 py-3">{produto["Marca"]}</td>
+
                         <td className="px-4 py-3">
                           <QuantityInput
                             codprod={produto["Cód. produto"]}
                             quantity={quantities[produto["Cód. produto"]] || 0}
-                            updateQuantity={updateQuantity} 
+                            updateQuantity={updateQuantity}
                             incrementQuantity={incrementQuantity}
                             decrementQuantity={decrementQuantity}
                           />
@@ -453,7 +476,8 @@ function TabelaPreco() {
         setItens={setItens}
         incrementQuantity={incrementQuantity}
         decrementQuantity={decrementQuantity}
-        updateQuantity={updateQuantity} 
+        updateQuantity={updateQuantity}
+        totalPedido={totalPedido}
 
       />
 

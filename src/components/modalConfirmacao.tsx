@@ -15,6 +15,7 @@ interface ModalConfirmacaoProps {
   incrementQuantity: (codprod: string) => void;
   decrementQuantity: (codprod: string) => void;
   updateQuantity: (codprod: string, newQuantity: number) => void;
+  totalPedido: number;
   // onConfirm: () => Promise<void>; // Função para enviar o pedido
 }
 
@@ -40,6 +41,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   incrementQuantity,
   decrementQuantity,
   updateQuantity,
+  totalPedido,
   // onConfirm,
 }) => {
 
@@ -77,7 +79,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
         return;
       }
 
-      if(itens.length === 0){
+      if (itens.length === 0) {
         setErrorMessage("Por favor, adicione itens ao pedido!")
         return;
       }
@@ -129,14 +131,14 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
       const errorMsg = error?.response?.data?.message || error?.message || 'Ocorreu um erro ao enviar o pedido. Tente novamente mais tarde.';
       setErrorMessage(errorMsg);
     } finally {
-      setLoading(false); 
+      setLoading(false);
     }
-  } 
+  }
 
 
   const handleSubmit = async () => {
     await sendOrder();
-  }; 
+  };
 
   const getTipoVenda = async () => {
     try {
@@ -273,7 +275,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                               quantity={item.quantidade || 0}
                               incrementQuantity={incrementQuantity}
                               decrementQuantity={decrementQuantity}
-                              updateQuantity={updateQuantity} 
+                              updateQuantity={updateQuantity}
 
                             />
                           </td>
@@ -289,13 +291,21 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                       ))}
                     </tbody>
                   </table>
-                </div>
 
+                </div>
+                <p className="mt-1 justify-between text-right dark:text-gray-300 font-bold"> Total:
+                  R${" "}
+                  {totalPedido.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
               </div>
-              <div className="relative p-4 w-full max-w-3xl max-h-full rounded-lg flex flex-col items-start space-y-4">
+
+              <div className="relative p-4 pt-1 w-full max-w-3xl max-h-full rounded-lg flex flex-col items-start space-y-4">
                 {/* Pedido de cupom */}
                 <div className="flex items-center">
-                  <span className="font-semibold dark:text-white mr-5">Pedido de cupom?</span>
+                  <span className="font-bold text-xl dark:text-white mr-5">CUPOM?</span>
                   <label className="inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -361,7 +371,6 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                             Nenhum Tipo de Negociação encontrado.
                           </li>
                         )}
-
                       </ul>
                     )}
                   </div>
