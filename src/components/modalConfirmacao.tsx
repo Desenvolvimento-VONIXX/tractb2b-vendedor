@@ -104,12 +104,12 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
       }
 
 
-      if (pedidoDeCupom && nomeCliente === "" || nomeCliente == null) {
+      if (pedidoDeCupom && (nomeCliente === "" || nomeCliente == null)) {
         setErrorMessage("Para pedidos de cupom é necessário informar o nome do cliente!");
         return;
       }
       
-
+      
       if (pedidoDeCupom && tipoPessoaSelecionado?.trim() == "Júridica") {
         setErrorMessage("Para pedido de cupom, é necessário que o parceiro seja do tipo pessoa física.")
         return;
