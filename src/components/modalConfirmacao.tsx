@@ -31,6 +31,12 @@ interface TipoNeg {
   codtipvenda: number;
 }
 
+interface TituloRetail {
+  coditit: number;  
+  dtvenc: string;  
+  vlr: number;     
+}
+
 const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   parceiroSelecionado,
   tipoPessoaSelecionado,
@@ -121,15 +127,18 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
         vlrunit: item.valorUnitario || 0,
       }));
 
+      const titSelecionados: TituloRetail[] = [];
+
+
       const orderData = [{
         enviado: 0,
         codparc: parceiroSelecionado,
         codvend: codVend,
         cupomVal: pedidoDeCupom,
         tipNeg: codtipVendaSelecionado,
-        nomeUsu: nomeCliente,
+        nomeUsu: nomeCliente || "",
         itensRetail: itensFormatted,
-        
+        titRetail: titSelecionados, 
       }];
 
       const orderResponse = await axiosInstance.post(
