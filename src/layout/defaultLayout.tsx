@@ -5,22 +5,20 @@ interface DefaultLayoutProps {
 }
 
 const DefaultLayout: React.FC<DefaultLayoutProps> = ({ children }) => {
-  const [darkMode, setDarkMode] = useState<boolean>(
-    () =>
-      localStorage.getItem("theme") === "dark" ||
-      (!localStorage.getItem("theme") &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches)
-  );
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme ? savedTheme === "dark" : true; 
+  });
 
   useEffect(() => {
-    // Update the theme in localStorage whenever it changes
     localStorage.setItem("theme", darkMode ? "dark" : "light");
 
-    // Apply the theme class to the body
     document.body.classList.toggle("dark", darkMode);
-  }, [darkMode]);
+  }, [darkMode]); 
 
-  const toggleTheme = () => setDarkMode((prev) => !prev);
+  const toggleTheme = () => {
+    setDarkMode((prev) => !prev);
+  };
 
   return (
     <div className={darkMode ? "dark" : "light"}>

@@ -3,9 +3,11 @@ import axiosInstance from "../helper/axiosInstance";
 import { IoMdArrowDropdown } from "react-icons/io";
 import QuantityInput from "./Quantidade";
 
+
 interface ModalConfirmacaoProps {
   parceiroSelecionado: number | null;
-  itens: any[]; // lista de itens a ser confirmada
+  tipoPessoaSelecionado: string | null;
+  itens: any[];
   isOpen: boolean;
   onClose: () => void;
   setNunota: (nunota: number) => void;
@@ -31,6 +33,7 @@ interface TipoNeg {
 
 const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   parceiroSelecionado,
+  tipoPessoaSelecionado,
   itens,
   isOpen,
   onClose,
@@ -57,22 +60,38 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   const [tipoNegociacao, setTipoNegociacao] = useState<TipoNeg[]>([]);
   const [showList, setShowList] = useState(false);
   const [codtipVendaSelecionado, setcodTipVendaSelecionado] = useState<number | null>(null);
+  // const [descTipVenda, setDescTipVenda] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [nomeCliente, setNomeCliente] = useState<string | null>(null);
+  // const [visibleFormDiversos, setVisibleFormDiversos] = useState(false);
+  // const [diversosData, setDiversosData] = useState<any[]>([]);
+  // const [abaDiversos, setAbaDiversos] = useState(false);
+  // const [quantidadePorProduto, setQuantidadePorProduto] = useState<Record<number, number>>({});
 
+  // const handleAddData = (newData: any) => {
+  //   setDiversosData((prevData) => [...prevData, newData]);
+  //   // setVisibleFormDiversos(false);
+  // };
+
+  const handleNomeClienteChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNomeCliente(event.target.value); // Atualiza o estado com o valor digitado
+  };
 
   const codVend = Number(sessionStorage.getItem("codVend"));
+  const codemp = Number(sessionStorage.getItem("codEmp"));
+
 
   const handleToggle = () => {
     setPedidoDeCupom(!pedidoDeCupom);
     setcodTipVendaSelecionado(null);
-    setSearchTipoVenda("");
-    setErrorMessage(null);
+    setErrorMessage("");
+ 
   };
 
 
   async function sendOrder() {
-    setLoading(true); // Inicia o carregamento
+    setLoading(true);
     try {
       if (!pedidoDeCupom && codtipVendaSelecionado === null) {
         setErrorMessage("Tipo de Negociação não pode ser nulo quando não for um pedido de cupom.");
@@ -81,6 +100,18 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
 
       if (itens.length === 0) {
         setErrorMessage("Por favor, adicione itens ao pedido!")
+        return;
+      }
+
+
+      if (pedidoDeCupom && nomeCliente === "" || nomeCliente == null) {
+        setErrorMessage("Para pedidos de cupom é necessário informar o nome do cliente!");
+        return;
+      }
+      
+
+      if (pedidoDeCupom && tipoPessoaSelecionado?.trim() == "Júridica") {
+        setErrorMessage("Para pedido de cupom, é necessário que o parceiro seja do tipo pessoa física.")
         return;
       }
 
@@ -96,7 +127,9 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
         codvend: codVend,
         cupomVal: pedidoDeCupom,
         tipNeg: codtipVendaSelecionado,
+        nomeUsu: nomeCliente,
         itensRetail: itensFormatted,
+        
       }];
 
       const orderResponse = await axiosInstance.post(
@@ -108,7 +141,6 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
       );
 
       if (orderResponse.status === 200) {
-        // console.log("Pedido enviado com sucesso!", orderResponse.data);
         const responseData = orderResponse.data;
         const nunotaValues = responseData.map(
           (item: { nunota: number }) => item.nunota
@@ -121,7 +153,9 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
         setcodTipVendaSelecionado(null);
         setSearchTipoVenda("");
         setPedidoDeCupom(false);
+        setNomeCliente("");
         onClose();
+        // setDiversosData([]);
       } else {
         setErrorMessage(orderResponse?.data?.message || 'Erro desconhecido.');
       }
@@ -138,12 +172,13 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
 
   const handleSubmit = async () => {
     await sendOrder();
+
   };
 
   const getTipoVenda = async () => {
     try {
       const result = await axiosInstance.get<{ Result: TipoNegociacao[] }>(
-        "/api/ClientsRetail/BuscaTipoNeg/9"
+        `/api/ClientsRetail/BuscaTipoNeg/${codemp}`
       );
 
       const tipNeg = result?.data?.Result || [];
@@ -188,12 +223,18 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
     setFilteredTipVenda(filtered);
   };
 
+  useEffect(() => {
+    if (searchTipVenda == "") {
+      setcodTipVendaSelecionado(null)
+      // setAbaDiversos(false);
+    }
+  }, [searchTipVenda])
+
   const handleParceiroSelect = (descTipVenda: string, codTipoVenda: number) => {
     setSearchTipoVenda(descTipVenda.trim());
     setcodTipVendaSelecionado(codTipoVenda);
     setShowList(false);
-    setErrorMessage(null);
-
+    setErrorMessage("");
   };
 
   useEffect(() => {
@@ -207,7 +248,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
         list &&
         !list.contains(event.target as Node)
       ) {
-        setShowList(false); // Esconde a lista
+        setShowList(false);
       }
     };
 
@@ -218,6 +259,16 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   const uniqueFilteredTipVenda = Array.from(
     new Map(filteredTipVenda.map((item) => [item.codtipvenda, item])).values()
   );
+
+
+  useEffect(() => {
+    if (!pedidoDeCupom) {
+      setSearchTipoVenda("");
+      setcodTipVendaSelecionado(null);
+    }
+  }, [pedidoDeCupom]);
+
+
 
 
   return (
@@ -300,6 +351,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                     maximumFractionDigits: 2,
                   })}
                 </p>
+              
               </div>
 
               <div className="relative p-4 pt-1 w-full max-w-3xl max-h-full rounded-lg flex flex-col items-start space-y-4">
@@ -326,56 +378,114 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                   </label>
                 </div>
 
+                {pedidoDeCupom && (
+                  <div className="relative w-full">
+                    <p className="font-semibold dark:text-white mb-1 ">Nome do Cliente:</p>
 
-                {/* Selecionar Tipo de Negociação */}
-                {!pedidoDeCupom && (
-
-                  <div className="w-full">
-                    <p className="font-semibold dark:text-white mb-1 ">Tipo de Negociação:</p>
-
-                    <div className="flex items-center">
-                      <label htmlFor="simple-search" className="sr-only">
-                        Selecionar Tipo de Negociação
-                      </label>
-
-                      <div className="relative w-full">
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                          <IoMdArrowDropdown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          id="simple-search"
-                          value={searchTipVenda.toUpperCase()} // Exibe o texto digitado ou selecionado
-                          onChange={handleInputChange}
-                          onFocus={() => setShowList(true)} // Exibe a lista ao focar
-                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-[5px] focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                          placeholder="Selecionar Tipo de Negociação"
-                        />
-                      </div>
+                    <div className="relative w-full">
+                      <input
+                        type="text"
+                        id="simple-search"
+                        value={nomeCliente || ''}
+                        onChange={handleNomeClienteChange}
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-[5px] focus:ring-primary-500 focus:border-primary-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                        placeholder="Digite o nome do Cliente"
+                      />
                     </div>
-
-                    {showList && (
-                      <ul className="bg-white border dark:text-gray-300 text-sm border-gray-300 mt-2 rounded-lg overflow-y-auto dark:bg-gray-700 dark:border-gray-600 max-h-[30vh]">
-                        {uniqueFilteredTipVenda.length > 0 ? (
-                          uniqueFilteredTipVenda.map((tipNeg) => (
-                            <li
-                              key={tipNeg.codtipvenda}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer uppercase"
-                              onClick={() => handleParceiroSelect(tipNeg.desc, tipNeg.codtipvenda)}
-                            >
-                              {tipNeg.desc}
-                            </li>
-                          ))
-                        ) : (
-                          <li className="p-2 text-gray-500 dark:text-gray-400">
-                            Nenhum Tipo de Negociação encontrado.
-                          </li>
-                        )}
-                      </ul>
-                    )}
                   </div>
                 )}
 
+                {/* Selecionar Tipo de Negociação */}
+                {!pedidoDeCupom && (
+                  <>
+                    <div className="w-full">
+                      <p className="font-semibold dark:text-white mb-1 ">Tipo de Negociação:</p>
+
+                      <div className="flex items-center">
+                        <label htmlFor="simple-search" className="sr-only">
+                          Selecionar Tipo de Negociação
+                        </label>
+
+                        <div className="relative w-full">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <IoMdArrowDropdown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                          </div>
+                          <input
+                            type="text"
+                            id="simple-search"
+                            value={searchTipVenda.toUpperCase()} // Exibe o texto digitado ou selecionado
+                            onChange={handleInputChange}
+                            onFocus={() => setShowList(true)} // Exibe a lista ao focar
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-[5px] focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                            placeholder="Selecionar Tipo de Negociação"
+                          />
+                        </div>
+                      </div>
+
+                      {showList && (
+                        <ul className="bg-white border dark:text-gray-300 text-sm border-gray-300 mt-2 rounded-lg overflow-y-auto dark:bg-gray-700 dark:border-gray-600 max-h-[30vh]">
+                          {uniqueFilteredTipVenda.length > 0 ? (
+                            uniqueFilteredTipVenda.map((tipNeg) => (
+                              <li
+                                key={tipNeg.codtipvenda}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer uppercase"
+                                onClick={() => handleParceiroSelect(tipNeg.desc, tipNeg.codtipvenda)}
+                              >
+                                {tipNeg.desc}
+                              </li>
+                            ))
+                          ) : (
+                            <li className="p-2 text-gray-500 dark:text-gray-400">
+                              Nenhum Tipo de Negociação encontrado.
+                            </li>
+                          )}
+                        </ul>
+                      )}
+
+                    </div>
+                    {/* {abaDiversos && (
+                      <div className="w-full" id="fin-diversos">
+                        <div className="flex justify-between mb-2">
+                          <h1 className="font-semibold dark:text-white mb-1 text-lg"> Financeiro</h1>
+
+                          {!visibleFormDiversos ? (
+                            <button
+                              type="button"
+                              className="px-2 py-2 font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-700  text-lg"
+                              onClick={() => setVisibleFormDiversos(true)}
+                            >
+                              <FaPlus />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="px-2 py-2 font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-700  text-lg"
+                              onClick={() => setVisibleFormDiversos(false)}
+                            >
+                              <FaTable />
+                            </button>
+
+                          )}
+
+
+                        </div>
+                        <div className="p-4 mb-4 text-sm rounded-lg dark:bg-gray-800 max-h-[35vh]" role="alert">
+                          {visibleFormDiversos ? (
+                            <FormDiversos
+                              onAdd={handleAddData}
+                              totalPedido={totalPedido}
+                            />
+                          ) : (
+                            <TableDiversos
+                              diversosResult={diversosData}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )} */}
+                  </>
+
+                )}
               </div>
 
 

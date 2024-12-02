@@ -23,12 +23,14 @@ interface Cliente {
   "Cód. parceiro": number;
   "Razão social": string;
   "Cpf/Cnpj": string;
+  "Tip. pessoa": string;
 }
 
 interface Parceiro {
   codParc: number;
   nome: string;
   cpfcnpj: string;
+  tipoPessoa: string;
 }
 
 function TabelaPreco() {
@@ -52,6 +54,7 @@ function TabelaPreco() {
   const [spinner, setSpinner] = useState(false);
   const [isLoadingParc, setIsLoadingParc] = useState(false);
   const [errorParc, setErrorParc] = useState("");
+  const [tipoPessoaSelecionado, setTipPessoaSelecionado] = useState<string | null>(null);
 
   const codEmp = sessionStorage.getItem("codEmp");
 
@@ -150,21 +153,29 @@ function TabelaPreco() {
       const result = await axiosInstance.get<{ Clientes: Cliente[] }>(
         "/api/ClientsRetail/BuscaClientesVarejo"
       );
-
+  
       const clientes = result?.data?.Clientes || [];
       const parceirosFormatados = clientes.map((cliente) => ({
         codParc: cliente["Cód. parceiro"],
         nome: cliente["Razão social"],
         cpfcnpj: cliente["Cpf/Cnpj"],
+        tipoPessoa: cliente["Tip. pessoa"],
       }));
-
-      setParceiros(parceirosFormatados);
-      setFilteredParceiros(parceirosFormatados);
+  
+      const parceiro2715 = parceirosFormatados.filter((cliente) => cliente.codParc === 2715);
+      const outrosParceiros = parceirosFormatados.filter((cliente) => cliente.codParc !== 2715);
+  
+      outrosParceiros.sort((a, b) => a.nome.localeCompare(b.nome));
+  
+      const parceirosOrdenados = [...parceiro2715, ...outrosParceiros];
+  
+      setParceiros(parceirosOrdenados);
+      setFilteredParceiros(parceirosOrdenados);
     } catch (error) {
       console.error("Erro ao buscar parceiros:", error);
       setErrorParc("Erro ao carregar parceiros. Tente novamente.");
     } finally {
-      setIsLoadingParc(false); // Finaliza o carregamento
+      setIsLoadingParc(false); 
     }
   };
 
@@ -201,25 +212,39 @@ function TabelaPreco() {
     const value = e.target.value;
     setSearchParceiro(value);
     setShowList(true);
-
+  
     const filtered = parceiros.filter((parceiro) => {
       const nome = parceiro.nome?.toLowerCase() || '';
       const id = parceiro.codParc?.toString() || '';
       const searchValue = value.toLowerCase();
+      
       return nome.includes(searchValue) || id.includes(searchValue);
     });
-
+  
+    filtered.sort((a, b) => {
+      const nomeA = a.nome?.toLowerCase() || '';
+      const nomeB = b.nome?.toLowerCase() || '';
+      const searchValue = value.toLowerCase();
+  
+      const positionA = nomeA.indexOf(searchValue);
+      const positionB = nomeB.indexOf(searchValue);
+  
+      return positionA - positionB;
+    });
+  
     setFilteredParceiros(filtered);
-
+  
     if (value.trim() === "") {
       setCpfCnpjSelecionado(null);
     }
   };
+  
 
-  const handleParceiroSelect = (parceiroNome: string, parceiroCodParc: number, parceiroCpfCnpj: string) => {
+  const handleParceiroSelect = (parceiroNome: string, parceiroCodParc: number, parceiroCpfCnpj: string, parceitoTipoPessoa: string) => {
     setSearchParceiro(parceiroNome.trim());
     setParceiroSelecionado(parceiroCodParc);
     setCpfCnpjSelecionado(parceiroCpfCnpj);
+    setTipPessoaSelecionado(parceitoTipoPessoa)
     setErrorMessage(null);
     setShowList(false);
   };
@@ -303,7 +328,7 @@ function TabelaPreco() {
                     <li
                       key={parceiro.codParc}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer uppercase"
-                      onClick={() => handleParceiroSelect(parceiro.nome, parceiro.codParc, parceiro.cpfcnpj)}
+                      onClick={() => handleParceiroSelect(parceiro.nome, parceiro.codParc, parceiro.cpfcnpj, parceiro.tipoPessoa)}
                     >
                       {parceiro.codParc} - {parceiro.nome}
                     </li>
@@ -467,6 +492,7 @@ function TabelaPreco() {
 
       <ModalConfirmacao
         parceiroSelecionado={parceiroSelecionado}
+        tipoPessoaSelecionado={tipoPessoaSelecionado}
         itens={itens}
         isOpen={modalConfirmacaoStatus}
         onClose={() => setModalConfirmacaoStatus(false)}
