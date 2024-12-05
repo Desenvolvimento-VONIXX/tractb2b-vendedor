@@ -10,6 +10,7 @@ import Spinner from "../components/spinner";
 import { FaUserLarge } from "react-icons/fa6";
 import QuantityInput from "../components/Quantidade";
 import ModalPedidosPendentes from "../components/modalPedidosPendentes";
+import ModalCadastraParceiro from "../components/modalCadastraParceiro";
 
 // Definindo a interface para os produtos
 interface Product {
@@ -57,6 +58,7 @@ function TabelaPreco() {
   const [errorParc, setErrorParc] = useState("");
   const [tipoPessoaSelecionado, setTipPessoaSelecionado] = useState<string | null>(null);
   const [modalPedidosPendentes, setModalPedidosPendentes] = useState(false);
+  const [modalCadastraParceiro, setModalCadastraParceiro] = useState(false);
 
   const codEmp = sessionStorage.getItem("codEmp");
 
@@ -120,6 +122,10 @@ function TabelaPreco() {
   const handlePedidosPendentes = () => {
     setModalPedidosPendentes(true);
   };
+
+  // const handleCadastrarParceiro = () => {
+  //   setModalCadastraParceiro(true);
+  // };
 
   async function fetchProducts() {
     setErrorMessage(null);
@@ -321,6 +327,16 @@ function TabelaPreco() {
                   placeholder="Selecionar Parceiro"
                 />
               </div>
+
+              {/* <div className="flex justify-end ml-5">
+                <button
+                  type="button"
+                  onClick={handleCadastrarParceiro}
+                  className="flex items-center justify-center py-3 text-sm font-medium text-gray-900 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 h-11"
+                >
+                  Cadastrar Parceiro
+                </button>
+              </div> */}
             </div>
 
             {showList && (
@@ -385,7 +401,7 @@ function TabelaPreco() {
                     <button
                       type="button"
                       onClick={handlePedidosPendentes}
-                      className="flex items-center justify-center py-3 px-8 text-sm font-medium text-gray-900 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 h-11"
+                      className="flex items-center justify-center py-3 text-sm font-medium text-gray-900 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 h-11"
                     >
                       Ver Pedidos Pendentes
                     </button>
@@ -526,10 +542,13 @@ function TabelaPreco() {
 
       />
 
-
       <ModalPedidosPendentes
         openPedidosRealizados={modalPedidosPendentes}
         onCloseModalPedidos={() => setModalPedidosPendentes(false)} />
+
+      <ModalCadastraParceiro
+        openCadastraParceiro={modalCadastraParceiro}
+        onCloseModalCadastraParceiro={() => setModalCadastraParceiro(false)} />
 
       <ModalFeedback
         isOpen={modalFeedbackStatus}
