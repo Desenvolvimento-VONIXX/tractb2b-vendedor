@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axiosInstance from "../helper/axiosInstance";
 import { IoMdArrowDropdown } from "react-icons/io";
 import QuantityInput from "./Quantidade";
-
+import PageComDesdobramentos from "./tableFormDiversos";
 
 interface ModalConfirmacaoProps {
   parceiroSelecionado: number | null;
@@ -18,6 +18,8 @@ interface ModalConfirmacaoProps {
   decrementQuantity: (codprod: string) => void;
   updateQuantity: (codprod: string, newQuantity: number) => void;
   totalPedido: number;
+  setTotalPedido: React.Dispatch<React.SetStateAction<number>>;
+
   // onConfirm: () => Promise<void>; // Função para enviar o pedido
 }
 
@@ -29,12 +31,6 @@ interface TipoNegociacao {
 interface TipoNeg {
   desc: string;
   codtipvenda: number;
-}
-
-interface TituloRetail {
-  coditit: number;  
-  dtvenc: string;  
-  vlr: number;     
 }
 
 const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
@@ -51,6 +47,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   decrementQuantity,
   updateQuantity,
   totalPedido,
+  setTotalPedido
   // onConfirm,
 }) => {
 
@@ -66,23 +63,55 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   const [tipoNegociacao, setTipoNegociacao] = useState<TipoNeg[]>([]);
   const [showList, setShowList] = useState(false);
   const [codtipVendaSelecionado, setcodTipVendaSelecionado] = useState<number | null>(null);
-  // const [descTipVenda, setDescTipVenda] = useState<string | null>(null);
+  const [descTipVenda, setDescTipVenda] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [nomeCliente, setNomeCliente] = useState<string | null>(null);
-  // const [visibleFormDiversos, setVisibleFormDiversos] = useState(false);
-  // const [diversosData, setDiversosData] = useState<any[]>([]);
-  // const [abaDiversos, setAbaDiversos] = useState(false);
-  // const [quantidadePorProduto, setQuantidadePorProduto] = useState<Record<number, number>>({});
-
-  // const handleAddData = (newData: any) => {
-  //   setDiversosData((prevData) => [...prevData, newData]);
-  //   // setVisibleFormDiversos(false);
-  // };
-
+  const [diversosData, setDiversosData] = useState<any[]>([]);
+  const [abaDiversos, setAbaDiversos] = useState(false);
+  const [quantidadePorProduto, setQuantidadePorProduto] = useState<number | null>(null);
+  const [descontos, setDescontos] = useState<{ [codprod: string]: number }>({});
   const handleNomeClienteChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setNomeCliente(event.target.value); // Atualiza o estado com o valor digitado
+    setNomeCliente(event.target.value);
   };
+
+  const removeDiverso = (index: number) => {
+    setDiversosData((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const calcularTotalComDesconto = (item: any) => {
+    const desconto = descontos[item.codprod] || 0;  // Desconto em reais
+    const valorUnitario = item.valorUnitario || 0; // Valor unitário do item
+    const quantidade = item.quantidade || 0;      // Quantidade do item
+    // Calcular o valor total considerando o desconto em reais
+    const valorComDesconto = (valorUnitario * quantidade) - desconto;
+    return valorComDesconto;
+  };
+
+
+  useEffect(() => {
+    const totalComDescontos = itens.reduce((total, item) => {
+      const totalItemComDesconto = calcularTotalComDesconto(item); // Aplica o cálculo do desconto
+      return total + totalItemComDesconto;
+    }, 0);
+
+    setTotalPedido(totalComDescontos); // Atualiza o total do pedido
+  }, [itens, descontos, setTotalPedido]); // Recalcula sempre que itens ou descontos mudarem
+
+
+
+
+  const handleDescontoChange = (codprod: string, value: number | "") => {
+    if (value === "") {
+      setDescontos((prev) => {
+        const { [codprod]: _, ...rest } = prev;
+        return rest;
+      });
+    } else {
+      setDescontos((prev) => ({ ...prev, [codprod]: value }));
+    }
+  };
+
 
   const codVend = Number(sessionStorage.getItem("codVend"));
   const codemp = Number(sessionStorage.getItem("codEmp"));
@@ -92,8 +121,16 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
     setPedidoDeCupom(!pedidoDeCupom);
     setcodTipVendaSelecionado(null);
     setErrorMessage("");
- 
+    setSearchTipoVenda("");
+
+    if (!pedidoDeCupom) {
+      setSearchTipoVenda("");
+      setDescTipVenda("");
+      setFilteredTipVenda(tipoNegociacao);
+
+    }
   };
+
 
 
   async function sendOrder() {
@@ -105,30 +142,63 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
       }
 
       if (itens.length === 0) {
-        setErrorMessage("Por favor, adicione itens ao pedido!")
+        setErrorMessage("Por favor, adicione itens ao pedido!");
         return;
       }
-
 
       if (pedidoDeCupom && (nomeCliente === "" || nomeCliente == null)) {
         setErrorMessage("Para pedidos de cupom é necessário informar o nome do cliente!");
         return;
       }
-      
-      
-      if (pedidoDeCupom && tipoPessoaSelecionado?.trim() == "Júridica") {
-        setErrorMessage("Para pedido de cupom, é necessário que o parceiro seja do tipo pessoa física.")
+
+      if (pedidoDeCupom && (nomeCliente && nomeCliente.toLowerCase().trim() === "consumidor final")) {
+        setErrorMessage(`O nome '${nomeCliente}' não é valido!`);
         return;
       }
 
-      const itensFormatted = itens.map(item => ({
-        codprod: item.codprod,
-        qtd: item.quantidade,
-        vlrunit: item.valorUnitario || 0,
-      }));
+      if (pedidoDeCupom && tipoPessoaSelecionado?.trim() == "Júridica") {
+        setErrorMessage("Para pedido de cupom, é necessário que o parceiro seja do tipo pessoa física.");
+        return;
+      }
 
-      const titSelecionados: TituloRetail[] = [];
+      if (!pedidoDeCupom && parceiroSelecionado === 2715) {
+        setErrorMessage(`Para o parceiro selecionado apenas pedidos de cupom são permitidos.`);
+        return;
+      }
 
+      let formattedFinanceiro: any[] = [];
+
+      if (descTipVenda && descTipVenda.toUpperCase().includes("DIVERSOS")) {
+        formattedFinanceiro = diversosData.map((diversos) => {
+          const { codTipoTituloSelecionado, valorDesdobramento, dataVencimento } = diversos;
+
+          const vlrDesdob = parseFloat(valorDesdobramento.toString().replace(",", "."));
+
+          return {
+            coditit: codTipoTituloSelecionado,
+            dtvenc: dataVencimento,
+            vlr: !isNaN(vlrDesdob) ? vlrDesdob : 0
+          };
+        });
+      } else {
+        formattedFinanceiro = [];
+      }
+
+      if (formattedFinanceiro.length === 0 && descTipVenda && descTipVenda.toUpperCase().includes("DIVERSOS")) {
+        setErrorMessage("Para o tipo de negociação DIVERSOS é necessário preencher os campos da aba Financeiro.");
+        return;
+      }
+
+
+      const itensFormatted = itens.map((item) => {
+        const desconto = descontos[item.codprod] || 0;
+        return {
+          codprod: item.codprod,
+          qtd: item.quantidade,
+          vlrunit: item.valorUnitario || 0,
+          vlrdesc: desconto
+        };
+      });
 
       const orderData = [{
         enviado: 0,
@@ -138,7 +208,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
         tipNeg: codtipVendaSelecionado,
         nomeUsu: nomeCliente || "",
         itensRetail: itensFormatted,
-        titRetail: titSelecionados, 
+        titRetail: formattedFinanceiro,
       }];
 
       const orderResponse = await axiosInstance.post(
@@ -164,19 +234,21 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
         setPedidoDeCupom(false);
         setNomeCliente("");
         onClose();
-        // setDiversosData([]);
+        setDiversosData([]);
+        setFilteredTipVenda(tipoNegociacao);
+        setDescontos({});
       } else {
         setErrorMessage(orderResponse?.data?.message || 'Erro desconhecido.');
       }
     } catch (error: any) {
       console.error("Erro ao enviar pedido:", error);
-
       const errorMsg = error?.response?.data?.message || error?.message || 'Ocorreu um erro ao enviar o pedido. Tente novamente mais tarde.';
       setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
     }
   }
+
 
 
   const handleSubmit = async () => {
@@ -235,15 +307,22 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   useEffect(() => {
     if (searchTipVenda == "") {
       setcodTipVendaSelecionado(null)
-      // setAbaDiversos(false);
+      setAbaDiversos(false);
+      setFilteredTipVenda(tipoNegociacao);
+
     }
   }, [searchTipVenda])
 
+
   const handleParceiroSelect = (descTipVenda: string, codTipoVenda: number) => {
     setSearchTipoVenda(descTipVenda.trim());
+    setDescTipVenda(descTipVenda.trim());
     setcodTipVendaSelecionado(codTipoVenda);
     setShowList(false);
-    setErrorMessage("");
+    setErrorMessage(null);
+    if (descTipVenda && descTipVenda.toUpperCase().includes("DIVERSOS")) {
+      setAbaDiversos(true)
+    }
   };
 
   useEffect(() => {
@@ -279,6 +358,25 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
 
 
 
+  useEffect(() => {
+    if (!itens.length) return;
+
+    const totalPorProduto = itens.reduce((acc: Record<number, number>, item) => {
+      if (!item.codprod || item.quantidade == null) return acc;
+      acc[item.codprod] = (acc[item.codprod] || 0) + item.quantidade;
+      return acc;
+    }, {});
+
+    const totalProdutosUnicos = Object.keys(totalPorProduto).length;
+
+    setQuantidadePorProduto(totalProdutosUnicos);
+
+  }, [itens]);
+
+
+
+
+
 
   return (
     <>
@@ -287,7 +385,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
           className={`flex flex-col overflow-y-auto overflow-x-hidden bg-black/50 fixed top-0 right-0 left-0 z-50 justify-center items-center w-full h-[calc(100%)] max-h-full`}
           onClick={handleOutsideClick}
         >
-          <div className="relative p-4 w-full max-w-3xl max-h-full">
+          <div className="relative p-4 w-full min-w-[75%] max-w-xl max-h-full">
             <div className="relative bg-white rounded-lg shadow dark:bg-gray-700">
               <div className="flex items-center justify-between p-4 border-b rounded-t dark:border-gray-600">
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -316,6 +414,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                       <tr>
                         <th className="px-6 py-3">Produto</th>
                         <th className="px-6 py-3">Quantidade Und.</th>
+                        <th className="px-6 py-3">Desconto (R$)</th>
                         <th className="px-6 py-3">Valor Total</th>
                       </tr>
                     </thead>
@@ -339,31 +438,68 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
 
                             />
                           </td>
-                          {/* <td className="px-6 py-4 text-center dark:text-gray-300">{item.quantidade}</td> */}
+                          <td className="px-6 py-4 text-center">
+                            <input
+                              type="number"
+                              value={descontos[item.codprod] !== undefined ? descontos[item.codprod] : "0"}
+                              onChange={(e) => {
+                                const valorDesconto = Number(e.target.value);
+                                const valorMaximo = item.valorUnitario * item.quantidade;
+
+                                if (valorDesconto <= valorMaximo) {
+                                  handleDescontoChange(item.codprod, valorDesconto); 
+                                } else {
+                                  handleDescontoChange(item.codprod, valorMaximo);
+                                }
+                              }}
+                              onFocus={(e) => {
+                                if (e.target.value === "0") {
+                                  e.target.value = "";
+                                }
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value === "") {
+                                  e.target.value = "0";
+                                }
+                              }}
+                              className="custom-number-input bg-gray-50 min-w-12 border-2 rounded-[10px] border-gray-300 h-11 text-center text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full py-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                              min={0}
+                              max={item.valorUnitario * item.quantidade} 
+                            />
+                          </td>
+
+
                           <td className="px-6 py-4 text-center dark:text-gray-300">
                             R${" "}
-                            {(item.valorTotal).toLocaleString("pt-BR", {
+                            {calcularTotalComDesconto(item).toLocaleString("pt-BR", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
                           </td>
+
                         </tr>
                       ))}
                     </tbody>
                   </table>
 
                 </div>
-                <p className="mt-1 justify-between text-right dark:text-gray-300 font-bold"> Total:
-                  R${" "}
-                  {totalPedido.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </p>
-              
+                <div className="flex justify-between">
+                  <p className="justify-between text-right dark:text-gray-300 font-bold"> Total de Produtos:
+                    {" "}
+                    {quantidadePorProduto}
+                  </p>
+                  <p className="mt-1 justify-between text-right dark:text-gray-300 font-bold"> Valor Total:
+                    R${" "}
+                    {totalPedido.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
+
               </div>
 
-              <div className="relative p-4 pt-1 w-full max-w-3xl max-h-full rounded-lg flex flex-col items-start space-y-4">
+              <div className="relative p-4 pt-1 w-full max-h-full rounded-lg flex flex-col items-start space-y-4">
                 {/* Pedido de cupom */}
                 <div className="flex items-center">
                   <span className="font-bold text-xl dark:text-white mr-5">CUPOM?</span>
@@ -407,7 +543,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                 {/* Selecionar Tipo de Negociação */}
                 {!pedidoDeCupom && (
                   <>
-                    <div className="w-full">
+                    <div className="w-full ">
                       <p className="font-semibold dark:text-white mb-1 ">Tipo de Negociação:</p>
 
                       <div className="flex items-center">
@@ -422,9 +558,9 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                           <input
                             type="text"
                             id="simple-search"
-                            value={searchTipVenda.toUpperCase()} // Exibe o texto digitado ou selecionado
+                            value={searchTipVenda.toUpperCase()}
                             onChange={handleInputChange}
-                            onFocus={() => setShowList(true)} // Exibe a lista ao focar
+                            onFocus={() => setShowList(true)}
                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-[5px] focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                             placeholder="Selecionar Tipo de Negociação"
                           />
@@ -452,46 +588,24 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                       )}
 
                     </div>
-                    {/* {abaDiversos && (
+                    {abaDiversos && (
                       <div className="w-full" id="fin-diversos">
                         <div className="flex justify-between mb-2">
                           <h1 className="font-semibold dark:text-white mb-1 text-lg"> Financeiro</h1>
 
-                          {!visibleFormDiversos ? (
-                            <button
-                              type="button"
-                              className="px-2 py-2 font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-700  text-lg"
-                              onClick={() => setVisibleFormDiversos(true)}
-                            >
-                              <FaPlus />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="px-2 py-2 font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-700  text-lg"
-                              onClick={() => setVisibleFormDiversos(false)}
-                            >
-                              <FaTable />
-                            </button>
-
-                          )}
-
-
                         </div>
-                        <div className="p-4 mb-4 text-sm rounded-lg dark:bg-gray-800 max-h-[35vh]" role="alert">
-                          {visibleFormDiversos ? (
-                            <FormDiversos
-                              onAdd={handleAddData}
-                              totalPedido={totalPedido}
-                            />
-                          ) : (
-                            <TableDiversos
-                              diversosResult={diversosData}
-                            />
-                          )}
+                        <div className="p-4 mb-4 text-sm rounded-lg dark:bg-gray-800 " role="alert">
+                          <PageComDesdobramentos
+                            setDiversos={setDiversosData}
+                            totalPedido={totalPedido}
+                            diversosResult={diversosData}
+                            removeDiverso={removeDiverso}
+                          />
+
+ 
                         </div>
                       </div>
-                    )} */}
+                    )}
                   </>
 
                 )}

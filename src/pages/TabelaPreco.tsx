@@ -9,6 +9,7 @@ import { MdZoomIn } from "react-icons/md";
 import Spinner from "../components/spinner";
 import { FaUserLarge } from "react-icons/fa6";
 import QuantityInput from "../components/Quantidade";
+import ModalPedidosPendentes from "../components/modalPedidosPendentes";
 
 // Definindo a interface para os produtos
 interface Product {
@@ -55,6 +56,7 @@ function TabelaPreco() {
   const [isLoadingParc, setIsLoadingParc] = useState(false);
   const [errorParc, setErrorParc] = useState("");
   const [tipoPessoaSelecionado, setTipPessoaSelecionado] = useState<string | null>(null);
+  const [modalPedidosPendentes, setModalPedidosPendentes] = useState(false);
 
   const codEmp = sessionStorage.getItem("codEmp");
 
@@ -115,6 +117,10 @@ function TabelaPreco() {
     setModalConfirmacaoStatus(true);
   };
 
+  const handlePedidosPendentes = () => {
+    setModalPedidosPendentes(true);
+  };
+
   async function fetchProducts() {
     setErrorMessage(null);
     setSpinner(true);
@@ -153,7 +159,7 @@ function TabelaPreco() {
       const result = await axiosInstance.get<{ Clientes: Cliente[] }>(
         "/api/ClientsRetail/BuscaClientesVarejo"
       );
-  
+
       const clientes = result?.data?.Clientes || [];
       const parceirosFormatados = clientes.map((cliente) => ({
         codParc: cliente["Cód. parceiro"],
@@ -161,21 +167,21 @@ function TabelaPreco() {
         cpfcnpj: cliente["Cpf/Cnpj"],
         tipoPessoa: cliente["Tip. pessoa"],
       }));
-  
+
       const parceiro2715 = parceirosFormatados.filter((cliente) => cliente.codParc === 2715);
       const outrosParceiros = parceirosFormatados.filter((cliente) => cliente.codParc !== 2715);
-  
+
       outrosParceiros.sort((a, b) => a.nome.localeCompare(b.nome));
-  
+
       const parceirosOrdenados = [...parceiro2715, ...outrosParceiros];
-  
+
       setParceiros(parceirosOrdenados);
       setFilteredParceiros(parceirosOrdenados);
     } catch (error) {
       console.error("Erro ao buscar parceiros:", error);
       setErrorParc("Erro ao carregar parceiros. Tente novamente.");
     } finally {
-      setIsLoadingParc(false); 
+      setIsLoadingParc(false);
     }
   };
 
@@ -187,12 +193,12 @@ function TabelaPreco() {
   }, []);
 
   useEffect(() => {
-    if(parceiroSelecionado === 2715){
+    if (parceiroSelecionado === 2715) {
       setCpfCnpjSelecionado("0");
     }
 
   }, [parceiroSelecionado])
-  
+
   useEffect(() => {
     if (cpfCnpjSelecionado) {
       fetchProducts();
@@ -212,33 +218,33 @@ function TabelaPreco() {
     const value = e.target.value;
     setSearchParceiro(value);
     setShowList(true);
-  
+
     const filtered = parceiros.filter((parceiro) => {
       const nome = parceiro.nome?.toLowerCase() || '';
       const id = parceiro.codParc?.toString() || '';
       const searchValue = value.toLowerCase();
-      
+
       return nome.includes(searchValue) || id.includes(searchValue);
     });
-  
+
     filtered.sort((a, b) => {
       const nomeA = a.nome?.toLowerCase() || '';
       const nomeB = b.nome?.toLowerCase() || '';
       const searchValue = value.toLowerCase();
-  
+
       const positionA = nomeA.indexOf(searchValue);
       const positionB = nomeB.indexOf(searchValue);
-  
+
       return positionA - positionB;
     });
-  
+
     setFilteredParceiros(filtered);
-  
+
     if (value.trim() === "") {
       setCpfCnpjSelecionado(null);
     }
   };
-  
+
 
   const handleParceiroSelect = (parceiroNome: string, parceiroCodParc: number, parceiroCpfCnpj: string, parceitoTipoPessoa: string) => {
     setSearchParceiro(parceiroNome.trim());
@@ -317,7 +323,7 @@ function TabelaPreco() {
               </div>
             </div>
 
-         {showList && (
+            {showList && (
               <ul className="bg-white border border-gray-300 mt-2 rounded-lg overflow-y-auto dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 max-h-[30vh]">
                 {isLoadingParc ? (
                   <li className="p-2 text-gray-500 dark:text-gray-300">Carregando...</li>
@@ -342,37 +348,49 @@ function TabelaPreco() {
 
           <div className="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">
             <div className="flex flex-col md:flex-row items-center justify-center space-y-3 md:space-y-0 md:space-x-4 p-4">
-              <div className="w-full">
-                <div className="flex items-center">
-                  <label htmlFor="simple-search" className="sr-only">
-                    Busque por um produto...
-                  </label>
-                  <div className="relative w-full">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                      <svg
-                        aria-hidden="true"
-                        className="w-5 h-5 text-gray-500 dark:text-gray-400"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
+              <div className="w-full flex justify-between">
+                <div className="w-full flex justify-between">
+                  <div className="flex items-center w-full">
+                    <label htmlFor="simple-search" className="sr-only">
+                      Busque por um produto...
+                    </label>
+                    <div className="relative w-full">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg
+                          aria-hidden="true"
+                          className="w-5 h-5 text-gray-500 dark:text-gray-400"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        id="simple-search"
+                        value={searchTermProduto}
+                        onChange={handleSearchProduct}
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                        placeholder="Busque por um produto..."
+                        disabled={!cpfCnpjSelecionado}
+                      />
                     </div>
-                    <input
-                      type="text"
-                      id="simple-search"
-                      value={searchTermProduto}
-                      onChange={handleSearchProduct}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                      placeholder="Busque por um produto..."
-                      disabled={!cpfCnpjSelecionado}
-                    />
                   </div>
+                  <div className="flex justify-end ml-5">
+                    <button
+                      type="button"
+                      onClick={handlePedidosPendentes}
+                      className="flex items-center justify-center py-3 px-8 text-sm font-medium text-gray-900 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 h-11"
+                    >
+                      Ver Pedidos Pendentes
+                    </button>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -504,8 +522,14 @@ function TabelaPreco() {
         decrementQuantity={decrementQuantity}
         updateQuantity={updateQuantity}
         totalPedido={totalPedido}
+        setTotalPedido={setTotalPedido}
 
       />
+
+
+      <ModalPedidosPendentes
+        openPedidosRealizados={modalPedidosPendentes}
+        onCloseModalPedidos={() => setModalPedidosPendentes(false)} />
 
       <ModalFeedback
         isOpen={modalFeedbackStatus}
