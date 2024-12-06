@@ -72,6 +72,8 @@ const PageComDesdobramentos: React.FC<PageComDesdobramentosProps> = ({
         const hoje = new Date();
         const dataVencimentoConvertida = new Date(dataVencimento);
 
+        console.log("teste");
+
         if (dataVencimentoConvertida < hoje) {
             setErrorMessage("A data de vencimento não pode ser anterior à data atual.");
             return;
