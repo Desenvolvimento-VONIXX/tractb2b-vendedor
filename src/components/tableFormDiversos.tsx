@@ -68,6 +68,15 @@ const PageComDesdobramentos: React.FC<PageComDesdobramentosProps> = ({
             return;
         }
 
+
+        const hoje = new Date();
+        const dataVencimentoConvertida = new Date(dataVencimento);
+
+        if (dataVencimentoConvertida < hoje) {
+            setErrorMessage("A data de vencimento não pode ser anterior à data atual.");
+            return;
+        }
+
         const newData = {
             codTipoTituloSelecionado,
             descTipTitulo,
@@ -154,11 +163,11 @@ const PageComDesdobramentos: React.FC<PageComDesdobramentosProps> = ({
     };
 
     useEffect(() => {
-        setDiversos([]); 
-        setDesdobAdicionados([]);  
+        setDiversos([]);
+        setDesdobAdicionados([]);
         setTotalDesdobramentos(0);
-    }, [totalPedido]); 
-    
+    }, [totalPedido]);
+
 
     useEffect(() => {
         if (searchTipTitulo === "") {
