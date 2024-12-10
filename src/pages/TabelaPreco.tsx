@@ -24,13 +24,17 @@ interface Product {
 interface Cliente {
   "Cód. parceiro": number;
   "Razão social": string;
+  "Nome": string;
+  "Nome vendedor": string;
   "Cpf/Cnpj": string;
   "Tip. pessoa": string;
 }
 
 interface Parceiro {
   codParc: number;
+  razaoSocial: string;
   nome: string;
+  nomeVendedor: string;
   cpfcnpj: string;
   tipoPessoa: string;
 }
@@ -169,7 +173,9 @@ function TabelaPreco() {
       const clientes = result?.data?.Clientes || [];
       const parceirosFormatados = clientes.map((cliente) => ({
         codParc: cliente["Cód. parceiro"],
-        nome: cliente["Razão social"],
+        nome: cliente["Nome"],
+        razaoSocial: cliente["Razão social"],
+        nomeVendedor: cliente["Nome vendedor"],
         cpfcnpj: cliente["Cpf/Cnpj"],
         tipoPessoa: cliente["Tip. pessoa"],
       }));
@@ -228,9 +234,11 @@ function TabelaPreco() {
     const filtered = parceiros.filter((parceiro) => {
       const nome = parceiro.nome?.toLowerCase() || '';
       const id = parceiro.codParc?.toString() || '';
+      const cpf_cnpj = parceiro.cpfcnpj?.toString() || '';
+
       const searchValue = value.toLowerCase();
 
-      return nome.includes(searchValue) || id.includes(searchValue);
+      return nome.includes(searchValue) || id.includes(searchValue) || cpf_cnpj.includes(searchValue); 
     });
 
     filtered.sort((a, b) => {
@@ -282,11 +290,15 @@ function TabelaPreco() {
   const filteredProducts = useMemo(() => {
     if (searchTermProduto.trim()) {
       return products.filter((produto) =>
-        produto["Produto"].toLowerCase().includes(searchTermProduto.toLowerCase())
+        produto["Produto"].toLowerCase().includes(searchTermProduto.toLowerCase()) ||
+        produto["Cód. produto"].toString().includes(searchTermProduto) ||
+        produto["Marca"].toString().includes(searchTermProduto)
+
       );
     }
     return products;
   }, [searchTermProduto, products]);
+
 
   const handleSearchProduct = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTermProduto(e.target.value);
@@ -299,8 +311,6 @@ function TabelaPreco() {
   const handleModalSucess = (showModalSuccess: boolean) => {
     setModalFeedbackStatus(showModalSuccess);
   }
-
-
 
   return (
     <DefaultLayout>
@@ -327,7 +337,6 @@ function TabelaPreco() {
                   placeholder="Selecionar Parceiro"
                 />
               </div>
-
               {/* <div className="flex justify-end ml-5">
                 <button
                   type="button"
@@ -339,10 +348,33 @@ function TabelaPreco() {
               </div> */}
             </div>
 
+
             {showList && (
               <ul className="bg-white border border-gray-300 mt-2 rounded-lg overflow-y-auto dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 max-h-[30vh]">
                 {isLoadingParc ? (
-                  <li className="p-2 text-gray-500 dark:text-gray-300">Carregando...</li>
+                  <li className="p-2 flex items-center justify-center text-gray-500 dark:text-gray-300">
+                    <svg
+                      className="animate-spin h-5 w-5 mr-2 text-gray-500 dark:text-gray-300"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path>
+                    </svg>
+                    Carregando...
+                  </li>
                 ) : errorParc ? (
                   <li className="p-2 text-red-500 dark:text-red-300">{errorParc}</li>
                 ) : filteredParceiros.length > 0 ? (
@@ -352,7 +384,40 @@ function TabelaPreco() {
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer uppercase"
                       onClick={() => handleParceiroSelect(parceiro.nome, parceiro.codParc, parceiro.cpfcnpj, parceiro.tipoPessoa)}
                     >
-                      {parceiro.codParc} - {parceiro.nome}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <div className="flex flex-col space-y-1">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-medium">Código:</span>{" "}
+                            <span className="font-bold text-gray-800 dark:text-gray-100">
+                              {parceiro.codParc}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-medium">Razão Social:</span>{" "}
+                            <span className="font-bold text-gray-800 dark:text-gray-100">
+                              {parceiro.razaoSocial}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-medium">Nome:</span>{" "}
+                            <span className="font-bold text-gray-800 dark:text-gray-100">
+                              {parceiro.nome}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-medium">Vendedor Preferencial:</span>{" "}
+                            <span className="font-bold text-gray-800 dark:text-gray-100">
+                              {parceiro.nomeVendedor}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-2 sm:mt-0 text-xs text-gray-600 dark:text-gray-300 sm:text-right">
+                          <span className="block">CPF/CNPJ:</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-100">
+                            {parceiro.cpfcnpj}
+                          </span>
+                        </div>
+                      </div>
                     </li>
                   ))
                 ) : (
@@ -361,6 +426,7 @@ function TabelaPreco() {
               </ul>
             )}
           </div>
+
 
           <div className="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">
             <div className="flex flex-col md:flex-row items-center justify-center space-y-3 md:space-y-0 md:space-x-4 p-4">

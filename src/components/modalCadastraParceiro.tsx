@@ -14,6 +14,7 @@ const ModalCadastraParceiro: React.FC<ModalCadastroParceiroProps> = ({
     const [errorMessage] = useState<string | null>(null);
     const [sucessMessage] = useState<string | null>(null);
 
+    
     const handleModalCadastroParceiro = (e: React.MouseEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget) {
             onCloseModalCadastraParceiro();
@@ -24,7 +25,6 @@ const ModalCadastraParceiro: React.FC<ModalCadastroParceiroProps> = ({
         e.stopPropagation();
         onCloseModalCadastraParceiro();
     };
-
 
 
     return (

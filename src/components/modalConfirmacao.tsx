@@ -71,6 +71,8 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   const [abaDiversos, setAbaDiversos] = useState(false);
   const [quantidadePorProduto, setQuantidadePorProduto] = useState<number | null>(null);
   const [descontos, setDescontos] = useState<{ [codprod: string]: number }>({});
+  const [descontosPercentual, setDescontosPercentual] = useState<{ [codprod: string]: number }>({});
+
   const handleNomeClienteChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNomeCliente(event.target.value);
   };
@@ -78,28 +80,6 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
   const removeDiverso = (index: number) => {
     setDiversosData((prev) => prev.filter((_, i) => i !== index));
   };
-
-  const calcularTotalComDesconto = (item: any) => {
-    const desconto = descontos[item.codprod] || 0;  // Desconto em reais
-    const valorUnitario = item.valorUnitario || 0; // Valor unitário do item
-    const quantidade = item.quantidade || 0;      // Quantidade do item
-    // Calcular o valor total considerando o desconto em reais
-    const valorComDesconto = (valorUnitario * quantidade) - desconto;
-    return valorComDesconto;
-  };
-
-
-  useEffect(() => {
-    const totalComDescontos = itens.reduce((total, item) => {
-      const totalItemComDesconto = calcularTotalComDesconto(item); // Aplica o cálculo do desconto
-      return total + totalItemComDesconto;
-    }, 0);
-
-    setTotalPedido(totalComDescontos); // Atualiza o total do pedido
-  }, [itens, descontos, setTotalPedido]); // Recalcula sempre que itens ou descontos mudarem
-
-
-
 
   const handleDescontoChange = (codprod: string, value: number | "") => {
     if (value === "") {
@@ -109,8 +89,58 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
       });
     } else {
       setDescontos((prev) => ({ ...prev, [codprod]: value }));
+      setDescontosPercentual((prev) => {
+        const { [codprod]: _, ...rest } = prev;
+        return rest;
+      });
     }
   };
+
+  const handleDescontoChangePercentual = (codprod: string, value: number | "") => {
+    if (value === "") {
+      setDescontosPercentual((prev) => {
+        const { [codprod]: _, ...rest } = prev;
+        return rest;
+      });
+    } else {
+      setDescontosPercentual((prev) => ({ ...prev, [codprod]: value }));
+      setDescontos((prev) => {
+        const { [codprod]: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
+
+  const calcularTotalComDesconto = (item: any) => {
+    const desconto = descontos[item.codprod] || 0;
+    const descontoPercentual = descontosPercentual[item.codprod] || 0;
+    const valorUnitario = item.valorUnitario || 0;
+    const quantidade = item.quantidade || 0;
+
+    let valorTotal = valorUnitario * quantidade;
+
+    if (desconto > 0) {
+      valorTotal -= desconto;
+      valorTotal = Math.round(valorTotal * 100) / 100; 
+    }
+
+    if (descontoPercentual > 0) {
+      valorTotal -= valorTotal * (descontoPercentual / 100);
+
+      valorTotal = Math.round(valorTotal * 100) / 100; 
+    }
+
+    return valorTotal;
+  };
+
+  useEffect(() => {
+    const totalComDescontos = itens.reduce((total, item) => {
+      const totalItemComDesconto = calcularTotalComDesconto(item);
+      return total + totalItemComDesconto;
+    }, 0);
+
+    setTotalPedido(Math.round(totalComDescontos * 100) / 100);
+  }, [itens, descontos, descontosPercentual, setTotalPedido]);
 
 
   const codVend = Number(sessionStorage.getItem("codVend"));
@@ -190,13 +220,16 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
       }
 
 
-      const itensFormatted = itens.map((item) => {
+       const itensFormatted = itens.map((item) => {
         const desconto = descontos[item.codprod] || 0;
+        const descontoPerc = descontosPercentual[item.codprod] || 0;
+
         return {
           codprod: item.codprod,
           qtd: item.quantidade,
           vlrunit: item.valorUnitario || 0,
-          vlrdesc: desconto
+          vlrdesc: desconto,
+          percDesc: descontoPerc
         };
       });
 
@@ -415,6 +448,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                         <th className="px-6 py-3">Produto</th>
                         <th className="px-6 py-3">Quantidade Und.</th>
                         <th className="px-6 py-3">Desconto (R$)</th>
+                        <th className="px-6 py-3">Desconto (%)</th>
                         <th className="px-6 py-3">Valor Total</th>
                       </tr>
                     </thead>
@@ -435,7 +469,6 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                               incrementQuantity={incrementQuantity}
                               decrementQuantity={decrementQuantity}
                               updateQuantity={updateQuantity}
-
                             />
                           </td>
                           <td className="px-6 py-4 text-center">
@@ -447,9 +480,11 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                                 const valorMaximo = item.valorUnitario * item.quantidade;
 
                                 if (valorDesconto <= valorMaximo) {
-                                  handleDescontoChange(item.codprod, valorDesconto); 
+                                  handleDescontoChange(item.codprod, valorDesconto);
+                                  handleDescontoChangePercentual(item.codprod, "");
                                 } else {
                                   handleDescontoChange(item.codprod, valorMaximo);
+                                  handleDescontoChangePercentual(item.codprod, "");
                                 }
                               }}
                               onFocus={(e) => {
@@ -464,9 +499,42 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                               }}
                               className="custom-number-input bg-gray-50 min-w-12 border-2 rounded-[10px] border-gray-300 h-11 text-center text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full py-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                               min={0}
-                              max={item.valorUnitario * item.quantidade} 
+                              max={item.valorUnitario * item.quantidade}
                             />
                           </td>
+
+                          <td className="px-6 py-4 text-center">
+                            <input
+                              type="number"
+                              value={descontosPercentual[item.codprod] !== undefined ? descontosPercentual[item.codprod] : "0"}
+                              onChange={(e) => {
+                                const percentualDesconto = Number(e.target.value);
+
+                                if (percentualDesconto <= 100) {
+                                  handleDescontoChangePercentual(item.codprod, percentualDesconto);
+                                  handleDescontoChange(item.codprod, "");
+                                } else {
+                                  handleDescontoChangePercentual(item.codprod, 100);
+                                  handleDescontoChange(item.codprod, "");
+                                }
+                              }}
+                              onFocus={(e) => {
+                                if (e.target.value === "0") {
+                                  e.target.value = "";
+                                }
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value === "") {
+                                  e.target.value = "0";
+                                }
+                              }}
+                              className="custom-number-input bg-gray-50 min-w-12 border-2 rounded-[10px] border-gray-300 h-11 text-center text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full py-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                              min={0}
+                              max={100}
+                            />
+                          </td>
+
+
 
 
                           <td className="px-6 py-4 text-center dark:text-gray-300">
@@ -602,7 +670,7 @@ const ModalConfirmacao: React.FC<ModalConfirmacaoProps> = ({
                             removeDiverso={removeDiverso}
                           />
 
- 
+
                         </div>
                       </div>
                     )}
